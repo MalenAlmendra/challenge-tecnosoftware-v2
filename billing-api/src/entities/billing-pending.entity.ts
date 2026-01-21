@@ -6,13 +6,16 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { Service } from './service.entity';
 import { Invoice } from './invoice.entity';
 
+//La información de facturación debe estar en BillingPending
 export enum PendingStatus {
+  CREATED = 'CREATED',
   PENDING = 'PENDING',
+  SENT_TO_BILL = 'SENT_TO_BILL',
   INVOICED = 'INVOICED',
 }
 
@@ -35,8 +38,8 @@ export class BillingPending {
   })
   status: PendingStatus;
 
-  @OneToMany(() => Invoice, (invoice) => invoice.pending)
-  invoices: Invoice[];
+  @OneToOne(() => Invoice, (invoice) => invoice.pending)
+  invoices: Invoice;
 
   @CreateDateColumn()
   createdAt: Date;
