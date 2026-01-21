@@ -6,6 +6,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { CognitoMockService } from './services/cognito-mock.service';
+import { AuthController } from './auth.controller';
+import { AppAuthGuard } from './guards/app-auth.guard';
 
 @Module({
   imports: [
@@ -21,8 +23,8 @@ import { CognitoMockService } from './services/cognito-mock.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [JwtStrategy, JwtAuthGuard, RolesGuard, CognitoMockService],
-  exports: [JwtAuthGuard, RolesGuard, PassportModule, JwtModule, CognitoMockService],
+  controllers: [AuthController],
+  providers: [JwtStrategy, JwtAuthGuard, AppAuthGuard, RolesGuard, CognitoMockService],
+  exports: [JwtAuthGuard, AppAuthGuard, RolesGuard, PassportModule, JwtModule, CognitoMockService],
 })
 export class AuthModule {}
-

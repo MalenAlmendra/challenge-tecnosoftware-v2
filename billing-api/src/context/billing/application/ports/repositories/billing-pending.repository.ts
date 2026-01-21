@@ -1,10 +1,10 @@
 // application/ports/repositories/billing-pending.repository.ts
-import { PendingStatus } from '../../domain/pending-status';
+import { BillingPendingStatus } from '../../domain/billing-pending/billing-pending.enum';
 
 export type BillingPendingEntity = {
   id: number;
   serviceId: number;
-  status: PendingStatus;
+  status: BillingPendingStatus;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -17,7 +17,7 @@ export interface BillingPendingRepository {
     customerId?: number;         // puede resolverse via join en infra o vista
     serviceDateFrom?: Date;      // idem
     serviceDateTo?: Date;
-    status?: PendingStatus;
+    status?: BillingPendingStatus;
     limit?: number;
     offset?: number;
   }): Promise<{ items: BillingPendingEntity[]; total: number }>;

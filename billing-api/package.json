@@ -21,7 +21,10 @@
     "typeorm": "typeorm-ts-node-commonjs",
     "typeorm:migrate": "npm run typeorm migration:generate -- -d src/config/ormconfig.ts",
     "typeorm:run": "ts-node --require tsconfig-paths/register node_modules/typeorm/cli.js migration:run -d src/config/ormconfig.ts",
-    "typeorm:revert": "npm run typeorm migration:revert -- -d src/config/ormconfig.ts"
+    "typeorm:revert": "npm run typeorm migration:revert -- -d src/config/ormconfig.ts",
+    "db:migrate": "npm run typeorm:run",
+    "db:seed": "ts-node --require tsconfig-paths/register src/seeds/seed.ts",
+    "db:reset": "npm run typeorm:revert && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
     "@nestjs/common": "^8.4.7",
@@ -41,7 +44,8 @@
     "pg": "^8.7.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.20"
+    "typeorm": "^0.3.20",
+    "jwks-rsa": "^3.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^8.2.8",
@@ -84,4 +88,3 @@
     "testEnvironment": "node"
   }
 }
-

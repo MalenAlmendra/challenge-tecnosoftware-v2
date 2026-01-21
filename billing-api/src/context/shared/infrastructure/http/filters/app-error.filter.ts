@@ -10,16 +10,10 @@ import { Request, Response } from 'express';
 import { AppError } from '../../../application/errors/app-error';
 
 type ErrorResponse = {
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-  meta: {
-    timestamp: string;
-    path: string;
-    requestId?: string;
-  };
+  code: string;
+  message: string;
+  details?: unknown;
+  correlationId?: string;
 };
 
 @Catch() 
@@ -29,23 +23,16 @@ export class AppErrorFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
 
-    const path = req.originalUrl ?? req.url;
-    const requestId =
-      (req.headers['x-request-id'] as string | undefined) ??
-      (req.headers['x-correlation-id'] as string | undefined);
+    const correlationId =
+      (req.headers['x-correlation-id'] as string | undefined) ??
+      (req.headers['x-request-id'] as string | undefined);
 
     if (exception instanceof AppError) {
       const payload: ErrorResponse = {
-        error: {
-          code: exception.code,
-          message: exception.message,
-          details: exception.details,
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          path,
-          requestId,
-        },
+        code: exception.code,
+        message: exception.message,
+        details: exception.details,
+        correlationId,
       };
 
       return res.status(exception.status).json(payload);
@@ -65,31 +52,19 @@ export class AppErrorFilter implements ExceptionFilter {
       const code = this.mapHttpStatusToCode(status);
 
       const payload: ErrorResponse = {
-        error: {
-          code,
-          message,
-          details: typeof response === 'object' ? response : undefined,
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          path,
-          requestId,
-        },
+        code,
+        message,
+        details: typeof response === 'object' ? response : undefined,
+        correlationId,
       };
 
       return res.status(status).json(payload);
     }
 
     const payload: ErrorResponse = {
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Unexpected error',
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        path,
-        requestId,
-      },
+      code: 'INTERNAL_ERROR',
+      message: 'Unexpected error',
+      correlationId,
     };
 
     // eslint-disable-next-line no-console

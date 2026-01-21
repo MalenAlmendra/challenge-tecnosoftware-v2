@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { DatabaseConfig } from './config/database.config';
 import { AuthModule } from './auth/auth.module';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { AppAuthGuard } from './auth/guards/app-auth.guard';
+import { BillingModule } from './context/billing/infrastructure/billing.module';
+import { AccountingModule } from './context/accounting/infrastructure/accounting.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -20,15 +21,15 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       inject: [ConfigService],
     }),
     AuthModule,
+    BillingModule,
+    AccountingModule,
+    HealthModule,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: AppAuthGuard,
     },
   ],
 })
 export class AppModule {}
-

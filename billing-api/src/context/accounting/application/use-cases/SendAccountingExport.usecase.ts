@@ -1,7 +1,7 @@
 // src/billing/application/use-cases/accounting/send-accounting-export.usecase.ts
 
 import { Errors } from '../../../shared/application/errors/errors';
-import { BillingBatchRepository } from '../../../billing/application/ports/Repositories/billing-batch.repository';
+import { BillingBatchRepository } from '../../../billing/application/ports/repositories/billing-batch.repository';
 import {
   AccountingExportRepository,
   ExportStatus,

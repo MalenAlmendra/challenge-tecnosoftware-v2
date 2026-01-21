@@ -1,7 +1,7 @@
 // src/billing/application/use-cases/accounting/prepare-accounting-export.usecase.ts
 
-import { BillingBatchRepository } from '../../../billing/application/ports/Repositories/billing-batch.repository';
-import { InvoiceRepository } from '../../../billing/application/ports/Repositories/invoice.repository';
+import { BillingBatchRepository } from '../../../billing/application/ports/repositories/billing-batch.repository';
+import { InvoiceRepository } from '../../../billing/application/ports/repositories/invoice.repository';
 import { Errors } from '../../../shared/application/errors/errors';
 import { BillingBatchStatus } from '../../../billing/domain/billing-batch/billing-batch.enum';
 
