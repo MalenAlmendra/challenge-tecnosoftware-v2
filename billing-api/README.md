@@ -1,123 +1,173 @@
-# Billing API
+# Billing API - Sistema de Facturación por Lote
 
-API backend para el challenge técnico de facturación por lote. Incluye configuración básica de NestJS, TypeORM, PostgreSQL y Docker.
+Backend en NestJS + TypeORM para facturación manual por lotes. Incluye integración con PostgreSQL, autenticación (Cognito o mock) y flujo de exportación contable simulado.
 
 ---
 
-## 🚀 Inicio Rápido
+## 🚀 Inicio Rápido (Docker)
 
-### Prerrequisitos
-
-- Node.js 18+
-- Docker y Docker Compose (opcional)
-- PostgreSQL 14+ (si trabajas localmente sin Docker)
-
-### Opción A: Desarrollo con Docker Compose (Recomendado)
-
-1. **Configurar variables de entorno**:
+1. **Configurar variables de entorno**
    ```bash
    cp .env.example .env
    ```
 
-2. **Levantar los servicios**:
+2. **Levantar todo (DB + migraciones + seeds + API)**
    ```bash
-   docker compose up -d
-   ```
-   Esto levantará:
-   - PostgreSQL en el puerto **5434** (host) → 5432 (container)
-   - La API en el puerto **3057** (host) → 3000 (container)
-
-3. **Ejecutar migraciones**:
-   ```bash
-   docker exec billing_challenge_api npm run typeorm:run
+   docker compose up --build
    ```
 
-4. **Verificar que funciona**:
+3. **Verificar salud**
    ```bash
    curl http://localhost:3057/health
    ```
 
-5. **Probar autenticación (mock)**:
+4. **Login (mock)**
    ```bash
    curl -X POST http://localhost:3057/auth/login \
      -H "Content-Type: application/json" \
      -d '{"username":"test","password":"test"}'
    ```
 
-6. **Ver la documentación Swagger**:
-   Abre en tu navegador: http://localhost:3057/api
+5. **Swagger**
+   - http://localhost:3057/api
 
 ---
 
-### Opción B: Desarrollo Local (Sin Docker)
+## 🧠 Decisiones de Modelado
 
-Si prefieres trabajar localmente sin Docker:
-
-1. **Instalar PostgreSQL localmente** y crear la base de datos:
-   ```bash
-   createdb billing_challenge
-   ```
-
-2. **Configurar variables de entorno**:
-   ```bash
-   cp .env.example .env
-   ```
-   Edita `.env` y ajusta:
-   ```env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USERNAME=tu_usuario_postgres
-   DB_PASSWORD=tu_password_postgres
-   DB_DATABASE=billing_challenge
-   PORT=3000
-   ```
-
-3. **Instalar dependencias y ejecutar migraciones**:
-   ```bash
-   npm install
-   npm run typeorm:run
-   ```
-
-4. **Iniciar la aplicación**:
-   ```bash
-   npm run start:dev
-   ```
-   La API estará disponible en: http://localhost:3000
+- **Logística vs Billing**: `Service` (logística) NO incluye estados de facturación. La facturación vive en `BillingPending`, `BillingBatch` e `Invoice`.
+- **Relaciones**:
+  - `Service (logística)` → `BillingPending` (1 a N)
+  - `BillingPending` → `Invoice` (1 a 1)
+  - `BillingBatch` → `Invoice` (1 a N)
+- **Batch manual**: el lote se ejecuta manualmente con `issueDate` + `receiptBook`.
+- **CAE simulado**: se genera localmente con un identificador simple.
 
 ---
 
-## 🛠️ Comandos Útiles
+## 🔒 Concurrencia & Idempotencia
+
+Estrategia mínima implementada:
+
+- **Lock de pendings**: durante el procesamiento del batch se hace `SELECT ... FOR UPDATE` para evitar que dos usuarios facturen el mismo pending.
+- **Constraint único**: `Invoice.pendingId` tiene índice único, evita duplicados.
+- **Secuencia por talonario**: tabla `invoice_number_sequences` con locking pesimista para numeración correlativa por `receiptBook`.
+- **Estado de batch**: si falla, queda en `ERROR` con mensaje.
+
+---
+
+## 📦 Alcance Implementado
+
+- Endpoints de pendings, batches, invoices y exports contables.
+- Guard + modo `MOCK_AUTH=true` (JWT local o user mock).
+- Validaciones DTO con `class-validator`.
+- Migraciones + seeds en Docker Compose.
+- Filtro global de errores `{ code, message, details?, correlationId? }`.
+
+---
+
+## 🔁 Formato de Datos para Sync Contable
+
+Ejemplo resumido (ver endpoint `/accounting/exports/:batchId`):
+
+```json
+{
+  "exportVersion": "1.0",
+  "generatedAt": "2024-02-01T10:00:00.000Z",
+  "batch": {
+    "id": 10,
+    "issueDate": "2024-02-01",
+    "receiptBook": "A",
+    "status": "PROCESSED"
+  },
+  "documents": [
+    {
+      "externalRef": "BATCH-10-INVOICE-55",
+      "docType": "INVOICE",
+      "invoiceNumber": "A-00000055",
+      "cae": "CAE-ABC123",
+      "issueDate": "2024-02-01",
+      "customer": { "id": 101 },
+      "totals": {
+        "currency": "ARS",
+        "netAmount": 1200,
+        "taxAmount": 0,
+        "totalAmount": 1200
+      },
+      "items": [
+        {
+          "lineNumber": 1,
+          "description": "Logistics service 777",
+          "quantity": 1,
+          "unitPrice": 1200,
+          "netAmount": 1200,
+          "references": {
+            "serviceId": 777,
+            "serviceDate": "2024-01-10",
+            "pendingId": 999
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Campos clave:
+- `externalRef`: idempotencia en ERP.
+- `receiptBook` y `invoiceNumber`: trazabilidad por talonario.
+- `references`: trazabilidad con logística.
+
+---
+
+## 🗄️ Migraciones y Seeds
+
+### Scripts
 
 ```bash
-# Desarrollo
-npm run start:dev
+npm run db:migrate
+npm run db:seed
+```
 
-# Ejecutar migraciones
-npm run typeorm:run
+### Qué incluyen
 
-# Generar migración
-npm run typeorm:migrate -- -n NombreMigracion
+- **Clientes simulados** vía `customerId` en `services`.
+- **Servicios facturables** con distintos estados.
+- **Billing pendings** en distintos estados.
+- **1 batch procesado** + invoices asociadas.
+- **Secuencia de numeración** inicial.
 
-# Tests
-npm test
+---
+
+## ✅ Variables de Entorno Relevantes
+
+```env
+DB_HOST=postgres
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=billing_challenge
+
+PORT=3000
+NODE_ENV=development
+
+MOCK_AUTH=true
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRES_IN=24h
+
+# Cognito (modo real)
+COGNITO_JWKS_URI=
+COGNITO_ISSUER=
+COGNITO_AUDIENCE=
 ```
 
 ---
 
-## 📚 Más Información
+## 🧩 Mejoras Futuras
 
-Para más detalles sobre:
-- Modelo de datos y entidades
-- Conceptos clave del dominio
-- Endpoints a implementar
-- Autenticación y autorización
-
-Consulta el **README principal del challenge** en `../README.md`
-
----
-
-## 📖 Recursos
-
-- **`src/entities/README.md`**: Documentación de entidades
-- **`src/auth/README.md`**: Guía de autenticación
+- Cola real (SQS/BullMQ) con retries configurables.
+- Estados adicionales para batch (`IN_PROGRESS`, `QUEUED`).
+- Auditoría y trazabilidad con `correlationId`.
+- Integración Cognito real con scopes/roles.
+- Tests e2e + contract tests de export contable.
 

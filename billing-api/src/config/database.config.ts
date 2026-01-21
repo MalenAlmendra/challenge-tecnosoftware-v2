@@ -15,11 +15,10 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       password: this.configService.get<string>('DB_PASSWORD', 'postgres'),
       database: this.configService.get<string>('DB_DATABASE', 'billing_challenge'),
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-      synchronize: this.configService.get<string>('NODE_ENV') === 'development',
+      synchronize: false,
       logging: this.configService.get<string>('NODE_ENV') === 'development',
       migrations: [__dirname + '/../migrations/*{.ts,.js}'],
       migrationsRun: false,
     };
   }
 }
-
